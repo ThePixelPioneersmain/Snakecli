@@ -12,12 +12,13 @@
 using namespace std;
 using std::chrono::system_clock;
 
-constexpr int BOARD_SIZE = 10;   // Board size
+constexpr int BOARD_SIZE = 10; // Board size
 
 char direction = 'r';
 
 // Input handler (runs in a separate thread)
-void input_handler() {
+void input_handler()
+{
     struct termios oldt, newt;
     tcgetattr(STDIN_FILENO, &oldt);
     newt = oldt;
@@ -25,11 +26,15 @@ void input_handler() {
     tcsetattr(STDIN_FILENO, TCSANOW, &newt);
 
     map<char, char> keymap = {{'d', 'r'}, {'a', 'l'}, {'w', 'u'}, {'s', 'd'}, {'q', 'q'}};
-    while (true) {
+    while (true)
+    {
         char input = getchar();
-        if (keymap.find(input) != keymap.end()) {
+        if (keymap.find(input) != keymap.end())
+        {
             direction = keymap[input];
-        } else if (input == 'q') {
+        }
+        else if (input == 'q')
+        {
             tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
             exit(0);
         }
@@ -38,14 +43,26 @@ void input_handler() {
 }
 
 // Render the board
-void render_game(int size, deque<pair<int,int>> &snake, pair<int,int> food, int score) {
-    for (int i = 0; i < size; ++i) {
-        for (int j = 0; j < size; ++j) {
-            if (i == food.first && j == food.second) {
+void render_game(int size, deque<pair<int, int>> &snake, pair<int, int> food, pair<int, int> poison, int score)
+{
+    for (int i = 0; i < size; ++i)
+    {
+        for (int j = 0; j < size; ++j)
+        {
+            if (i == food.first && j == food.second)
+            {
                 cout << "🍎";
-            } else if (find(snake.begin(), snake.end(), make_pair(i, j)) != snake.end()) {
+            }
+            else if (i == poison.first && j == poison.second)
+            {
+                cout << "☠️";
+            }
+            else if (find(snake.begin(), snake.end(), make_pair(i, j)) != snake.end())
+            {
                 cout << "🐍";
-            } else {
+            }
+            else
+            {
                 cout << "⬜";
             }
         }
@@ -55,90 +72,138 @@ void render_game(int size, deque<pair<int,int>> &snake, pair<int,int> food, int 
 }
 
 // Compute next head (wraps around)
-pair<int,int> get_next_head(pair<int,int> current, char direction) {
-    pair<int,int> next;
-    if (direction == 'r') {
+pair<int, int> get_next_head(pair<int, int> current, char direction)
+{
+    pair<int, int> next;
+    if (direction == 'r')
+    {
         next = make_pair(current.first, (current.second + 1) % BOARD_SIZE);
-    } else if (direction == 'l') {
+    }
+    else if (direction == 'l')
+    {
         next = make_pair(current.first, current.second == 0 ? BOARD_SIZE - 1 : current.second - 1);
-    } else if (direction == 'd') {
+    }
+    else if (direction == 'd')
+    {
         next = make_pair((current.first + 1) % BOARD_SIZE, current.second);
-    } else { // 'u'
+    }
+    else
+    { // 'u'
         next = make_pair(current.first == 0 ? BOARD_SIZE - 1 : current.first - 1, current.second);
     }
     return next;
 }
 
 // Spawn food at a location not occupied by the snake
-pair<int,int> spawn_food(const deque<pair<int,int>> &snake) {
-    vector<pair<int,int>> freeCells;
-    for (int i = 0; i < BOARD_SIZE; ++i) {
-        for (int j = 0; j < BOARD_SIZE; ++j) {
-            pair<int,int> pos = make_pair(i,j);
-            if (find(snake.begin(), snake.end(), pos) == snake.end()) {
+pair<int, int> spawn_food(const deque<pair<int, int>> &snake)
+{
+    vector<pair<int, int>> freeCells;
+    for (int i = 0; i < BOARD_SIZE; ++i)
+    {
+        for (int j = 0; j < BOARD_SIZE; ++j)
+        {
+            pair<int, int> pos = make_pair(i, j);
+            if (find(snake.begin(), snake.end(), pos) == snake.end())
+            {
                 freeCells.push_back(pos);
             }
         }
     }
 
-    if (freeCells.empty()) return make_pair(-1,-1); // board full
+    if (freeCells.empty())
+        return make_pair(-1, -1); // board full
 
     int idx = rand() % freeCells.size();
     return freeCells[idx];
 }
 
 // Main game loop
-void game_play() {
+void game_play()
+{
     system("clear");
-    deque<pair<int,int>> snake;
-    snake.push_back(make_pair(0,0)); // starting segment
+    deque<pair<int, int>> snake;
+    snake.push_back(make_pair(0, 0)); // starting segment
 
-    pair<int,int> food = spawn_food(snake);
+    pair<int, int> food = spawn_food(snake);
+    pair<int, int> poison = spawn_food(snake); // spawn initial poison
+
     int score = 0;
-    int level = 1; // starting level
+    int level = 1;       // starting level
     int baseDelay = 500; // initial delay in ms
 
-    while (true) {
-        pair<int,int> currentHead = snake.back();
-        pair<int,int> nextHead = get_next_head(currentHead, direction);
+    while (true)
+    {
+        pair<int, int> currentHead = snake.back();
+        pair<int, int> nextHead = get_next_head(currentHead, direction);
 
         cout << "\033[H"; // move cursor to top-left
 
         bool willGrow = (nextHead == food);
         bool collision = false;
 
-        if (willGrow) {
-            if (find(snake.begin(), snake.end(), nextHead) != snake.end()) collision = true;
-        } else {
+        if (willGrow)
+        {
+            if (find(snake.begin(), snake.end(), nextHead) != snake.end())
+                collision = true;
+        }
+        else
+        {
             auto itStart = snake.begin();
-            if (!snake.empty()) ++itStart; // skip tail
-            if (find(itStart, snake.end(), nextHead) != snake.end()) collision = true;
+            if (!snake.empty())
+                ++itStart; // skip tail
+            if (find(itStart, snake.end(), nextHead) != snake.end())
+                collision = true;
         }
 
-        if (collision) {
+        // Snake collides with itself
+        if (collision)
+        {
             system("clear");
             cout << "Game Over\n";
             cout << "Final Length: " << snake.size() << "  Final Score: " << score << "\n";
             exit(0);
         }
 
+        // Snake eats poison
+        if (nextHead == poison)
+        {
+            system("clear");
+            cout << "Snake ate poison ☠️ Game Over!\n";
+            cout << "Final Length: " << snake.size() << "  Final Score: " << score << "\n";
+            exit(0);
+        }
+
         snake.push_back(nextHead);
-        if (willGrow) {
+
+        if (willGrow)
+        {
             score += 1;
             food = spawn_food(snake);
-            if (food.first == -1) {
+
+            // 🔹 Respawn poison every 3 points
+            if (score % 3 == 0)
+            {
+                poison = spawn_food(snake);
+            }
+
+            if (food.first == -1)
+            {
                 system("clear");
                 cout << "You Win! Final Length: " << snake.size() << "  Final Score: " << score << "\n";
                 exit(0);
             }
-        } else {
+        }
+        else
+        {
             snake.pop_front();
         }
 
         // Level calculation: increase level every 5 points
         level = (score / 5) + 1;
 
-        render_game(BOARD_SIZE, snake, food, score);
+        // Render game (modified to include poison)
+        render_game(BOARD_SIZE, snake, food, poison, score);
+
         cout << "Level: " << level << "\n";
 
         // Dynamic speed: faster as level increases (min 50ms)
