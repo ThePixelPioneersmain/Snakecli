@@ -95,6 +95,8 @@ void game_play() {
 
     pair<int,int> food = spawn_food(snake);
     int score = 0;
+    int level = 1; // starting level
+    int baseDelay = 500; // initial delay in ms
 
     while (true) {
         pair<int,int> currentHead = snake.back();
@@ -133,9 +135,14 @@ void game_play() {
             snake.pop_front();
         }
 
-        render_game(BOARD_SIZE, snake, food, score);
+        // Level calculation: increase level every 5 points
+        level = (score / 5) + 1;
 
-        int delay_ms = max(100, 500 - (int)snake.size() * 20); // speed increases as snake grows
+        render_game(BOARD_SIZE, snake, food, score);
+        cout << "Level: " << level << "\n";
+
+        // Dynamic speed: faster as level increases (min 50ms)
+        int delay_ms = max(50, baseDelay - (level - 1) * 50 - (int)snake.size() * 5);
         std::this_thread::sleep_for(std::chrono::milliseconds(delay_ms));
     }
 }
